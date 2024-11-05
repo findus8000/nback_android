@@ -1,5 +1,6 @@
 package mobappdev.example.nback_cimpl.ui.screens
 
+import android.speech.tts.TextToSpeech
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -8,9 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -29,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import mobappdev.example.nback_cimpl.ui.viewmodels.FakeVM
 import mobappdev.example.nback_cimpl.ui.viewmodels.GameState
@@ -39,14 +44,14 @@ import mobappdev.example.nback_cimpl.ui.viewmodels.GameViewModel
 @Composable
 fun GameScreen(
     vm: GameViewModel,
-    nc: NavHostController
+    nc: NavHostController,
+    tts : TextToSpeech,
+    isTTSInitialized: Boolean
 ) {
-    val highscore by vm.highscore.collectAsState()  // Highscore is its own StateFlow
     val gameState by vm.gameState.collectAsState()
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val roundCounter by vm.roundCounter.collectAsState()
-
+    val score by vm.score.collectAsState()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHostState) }
@@ -60,46 +65,56 @@ fun GameScreen(
         ) {
             LaunchedEffect(Unit) { vm.startGame() }
 
+            Text(text = "Current Event Value: ${gameState.eventValue}")
+            Text(text = "Current Round: ${gameState.roundCounter}")
+            Text(text = "Score: $score")
+
             when (gameState.gameType) {
                 GameType.Visual -> {
-                    Text("Visual Game")
-                    Text(text = "Current Event Value: ${gameState.eventValue}")
-                    Text(text = "Current : ${roundCounter}")
-                    VisualGameContent(gameState.eventValue, roundCounter)
+                    VisualGameContent(gameState, vm)
                 }
                 GameType.Audio -> {
-                    Text("Audio Game")
-                    AudioGameContent()
+                    AudioGameContent(gameState, vm, tts, isTTSInitialized)
                 }
                 GameType.AudioVisual -> TODO()
             }
 
-            Button(
-                onClick = {
-                    nc.navigate("home");
-                }) {
-                Text("Return to Home")
+            if (gameState.roundCounter == 10){
+                Button(onClick = { nc.navigate("home") }) {
+                    Text("End Game")
+                }
             }
+
         }
     }
 }
 
 @Composable
-fun VisualGameContent(currentEventValue : Int, roundCounter : Int) {
-
-    Grid3x3(currentEventValue, roundCounter)
+fun VisualGameContent(gameState: GameState, vm: GameViewModel) {
+    Grid3x3(gameState)
+    MatchButton(vm, gameState)
 }
 
 @Composable
-fun AudioGameContent() {
-    // Audio n-back game logic here, based on the `currentAudioCue`
+fun AudioGameContent(gameState: GameState, vm: GameViewModel, tts: TextToSpeech, isTTSInitialized: Boolean) {
+    val lettersList = listOf('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I')
+    if (isTTSInitialized) {
+        LaunchedEffect(gameState.roundCounter) {
+            val letter = lettersList.getOrNull(gameState.eventValue - 1)?.toString()
+            if (letter != null) {
+                tts.speak(letter, TextToSpeech.QUEUE_FLUSH, null, null)
+            }
+        }
+    }else{
+        Text(text = "TTS not initialized")
+    }
+    MatchButton(vm, gameState)
 }
 
-
 @Composable
-fun Grid3x3(currentEventValue: Int, roundCounter: Int) {
-    val row = (currentEventValue - 1) / 3
-    val col = (currentEventValue - 1) % 3
+fun Grid3x3(gameState: GameState) {
+    val row = (gameState.eventValue - 1) / 3
+    val col = (gameState.eventValue - 1) % 3
 
     Column(
         verticalArrangement = Arrangement.Center,
@@ -112,7 +127,7 @@ fun Grid3x3(currentEventValue: Int, roundCounter: Int) {
                     val isTargetCell = rowIndex == row && columnIndex == col
                     val color = remember { Animatable(Color.LightGray) }
 
-                    LaunchedEffect(roundCounter){
+                    LaunchedEffect(gameState.roundCounter){
                         if (isTargetCell) {
                             color.animateTo(
                                 targetValue = Color.DarkGray,
@@ -130,15 +145,60 @@ fun Grid3x3(currentEventValue: Int, roundCounter: Int) {
                             .padding(5.dp)
                             .size(100.dp)
                             .background(color.value),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("(row $rowIndex, col $columnIndex)")
-                    }
+                    )
                 }
             }
         }
     }
 }
+
+@Composable
+fun MatchButton(vm: GameViewModel, gameState: GameState) {
+    var animationTrigger by remember { mutableStateOf(false) }
+    var nrClicksRound by remember { mutableStateOf(0) }
+    var isMatch by remember { mutableStateOf(null as Boolean?) }
+    val color = remember { Animatable(Color.DarkGray) }
+
+    Button(
+        onClick = {
+            if (nrClicksRound == 0){
+                animationTrigger = !animationTrigger
+                isMatch = vm.checkMatch()
+            }
+            nrClicksRound++
+        },
+        modifier = Modifier
+            .padding(16.dp)
+            .width(250.dp)
+            .height(80.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = color.value // Use the animated color for the button
+        )
+    ) {
+        Text(
+            text = "N-back match",
+            fontSize = 20.sp
+        )
+    }
+
+    LaunchedEffect(gameState.roundCounter){
+        nrClicksRound = 0
+    }
+
+    LaunchedEffect(animationTrigger) {
+        if (isMatch != null) {
+            color.animateTo(
+                targetValue = if (isMatch as Boolean) Color.Green else Color.Red,
+                animationSpec = tween(400)
+            )
+            color.animateTo(
+                targetValue = Color.DarkGray,
+                animationSpec = tween(400)
+            )
+        }
+    }
+}
+
 
 @Preview
 @Composable
@@ -146,6 +206,9 @@ fun GameScreenPreview() {
     Surface(){
         GameScreen(
             FakeVM(),
-            nc = TODO())
+            nc = TODO(),
+            tts = TODO(),
+            isTTSInitialized = TODO()
+        )
     }
 }

@@ -39,12 +39,10 @@ interface GameViewModel {
     val score: StateFlow<Int>
     val highscore: StateFlow<Int>
     val nBack: Int
-    val roundCounter: StateFlow<Int>
 
     fun setGameType(gameType: GameType)
     fun startGame()
-
-    fun checkMatch()
+    fun checkMatch() : Boolean
 }
 
 class GameVM(
@@ -71,8 +69,7 @@ class GameVM(
     private val nBackHelper = NBackHelper()  // Helper that generate the event array
     private var events = emptyArray<Int>()  // Array with all events
 
-    private val _roundCounter = MutableStateFlow(0)
-    override val roundCounter: StateFlow<Int> = _roundCounter.asStateFlow()
+    private var hasCheckedMatch = false
 
     override fun setGameType(gameType: GameType) {
         // update the gametype in the gamestate
@@ -84,37 +81,58 @@ class GameVM(
 
         // Get the events from our C-model (returns IntArray, so we need to convert to Array<Int>)
         events = nBackHelper.generateNBackString(10, 9, 30, nBack).toList().toTypedArray()  // Todo Higher Grade: currently the size etc. are hardcoded, make these based on user input
-        _roundCounter.value = 0
         Log.d("GameVM", "The following sequence was generated: ${events.contentToString()}")
+        _gameState.value = _gameState.value.copy(roundCounter = 0)
+        _score.value = 0
 
         job = viewModelScope.launch {
             when (gameState.value.gameType) {
-                GameType.Audio -> runAudioGame()
+                GameType.Audio -> runAudioGame(events)
                 GameType.AudioVisual -> runAudioVisualGame()
                 GameType.Visual -> runVisualGame(events)
             }
-            // Todo: update the highscore
+
+           if (_score.value  > _highscore.value){
+               _highscore.value = _score.value
+               userPreferencesRepository.saveHighScore(_highscore.value)
+           }
+
         }
     }
 
-    override fun checkMatch() {
-        /**
-         * Todo: This function should check if there is a match when the user presses a match button
-         * Make sure the user can only register a match once for each event.
-         */
+    override fun checkMatch(): Boolean {
+        if (hasCheckedMatch) return false
+
+        if (gameState.value.roundCounter > nBack){
+            hasCheckedMatch = true
+
+            val match : Boolean = events.get(gameState.value.roundCounter-1) ==
+                    events.get(gameState.value.roundCounter-1 - nBack)
+
+            if (match){
+                _score.value++;
+                return true;
+            }else{
+                return false;
+            }
+        }
+        return false;
     }
-    private fun runAudioGame() {
-        // Todo: Make work for Basic grade
+
+    private suspend fun runAudioGame(events: Array<Int>) {
+        for (value in events) {
+            hasCheckedMatch = false
+            _gameState.value = _gameState.value.copy(roundCounter = _gameState.value.roundCounter + 1, eventValue = value)
+            delay(eventInterval)
+        }
     }
 
     private suspend fun runVisualGame(events: Array<Int>){
-        // Todo: Replace this code for actual game code
         for (value in events) {
-            _roundCounter.value += 1
-            _gameState.value = _gameState.value.copy(eventValue = value)
+            hasCheckedMatch = false
+            _gameState.value = _gameState.value.copy(roundCounter = _gameState.value.roundCounter + 1, eventValue = value)
             delay(eventInterval)
         }
-
     }
 
     private fun runAudioVisualGame(){
@@ -157,7 +175,8 @@ enum class GameType{
 data class GameState(
     // You can use this state to push values from the VM to your UI.
     val gameType: GameType = GameType.Visual,  // Type of the game
-    val eventValue: Int = -1  // The value of the array string
+    val eventValue: Int = -1,  // The value of the array string
+    val roundCounter: Int = 0
 )
 
 
@@ -173,8 +192,6 @@ class FakeVM: GameViewModel{
         get() = MutableStateFlow(42).asStateFlow()
     override val nBack: Int
         get() = 2
-    override val roundCounter: StateFlow<Int>
-        get() = TODO("Not yet implemented")
 
     override fun setGameType(gameType: GameType) {
     }
@@ -182,6 +199,7 @@ class FakeVM: GameViewModel{
     override fun startGame() {
     }
 
-    override fun checkMatch() {
+    override fun checkMatch(): Boolean {
+        return true
     }
 }
