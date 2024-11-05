@@ -37,6 +37,7 @@ import mobappdev.example.nback_cimpl.data.UserPreferencesRepository
 interface GameViewModel {
     val gameState: StateFlow<GameState>
     val score: StateFlow<Int>
+    val nrMatches: StateFlow<Int>
     val highscore: StateFlow<Int>
     val nBack: Int
 
@@ -70,6 +71,11 @@ class GameVM(
     private var events = emptyArray<Int>()  // Array with all events
 
     private var hasCheckedMatch = false
+    private var nrClicks = 0
+
+    private val _nrMatches = MutableStateFlow(0)
+    override val nrMatches: StateFlow<Int> = _nrMatches.asStateFlow()
+
 
     override fun setGameType(gameType: GameType) {
         // update the gametype in the gamestate
@@ -84,6 +90,8 @@ class GameVM(
         Log.d("GameVM", "The following sequence was generated: ${events.contentToString()}")
         _gameState.value = _gameState.value.copy(roundCounter = 0)
         _score.value = 0
+        _nrMatches.value = 0
+        nrClicks = 0
 
         job = viewModelScope.launch {
             when (gameState.value.gameType) {
@@ -101,7 +109,12 @@ class GameVM(
     }
 
     override fun checkMatch(): Boolean {
-        if (hasCheckedMatch) return false
+        nrClicks++
+        if (hasCheckedMatch){
+            _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
+            Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
+            return false
+        }
 
         if (gameState.value.roundCounter > nBack){
             hasCheckedMatch = true
@@ -110,12 +123,19 @@ class GameVM(
                     events.get(gameState.value.roundCounter-1 - nBack)
 
             if (match){
-                _score.value++;
+                _nrMatches.value++;
+
+                _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
+                Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
                 return true;
             }else{
+                _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
+                Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
                 return false;
             }
         }
+        _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
+        Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
         return false;
     }
 
@@ -188,6 +208,8 @@ class FakeVM: GameViewModel{
         get() = MutableStateFlow(GameState()).asStateFlow()
     override val score: StateFlow<Int>
         get() = MutableStateFlow(2).asStateFlow()
+    override val nrMatches: StateFlow<Int>
+        get() = TODO("Not yet implemented")
     override val highscore: StateFlow<Int>
         get() = MutableStateFlow(42).asStateFlow()
     override val nBack: Int

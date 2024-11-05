@@ -52,6 +52,7 @@ fun GameScreen(
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val score by vm.score.collectAsState()
+    val nrMatches by vm.nrMatches.collectAsState()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHostState) }
@@ -67,6 +68,7 @@ fun GameScreen(
 
             Text(text = "Current Event Value: ${gameState.eventValue}")
             Text(text = "Current Round: ${gameState.roundCounter}")
+            Text(text = "Correct matches: $nrMatches")
             Text(text = "Score: $score")
 
             when (gameState.gameType) {
