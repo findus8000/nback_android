@@ -119,7 +119,6 @@ class GameVM(
         nrClicks++
         if (hasCheckedMatch){
             _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
-            Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
             return false
         }
 
@@ -131,18 +130,14 @@ class GameVM(
 
             if (match){
                 _nrMatches.value++;
-
                 _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
-                Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
                 return true;
             }else{
                 _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
-                Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
                 return false;
             }
         }
         _score.value = _nrMatches.value*((_nrMatches.value.toDouble() / nrClicks) * 100).toInt()
-        Log.d("TAG", "score: " + score.value + " nrMatches: " + _nrMatches.value + " nrClicks: " + nrClicks)
         return false;
     }
 

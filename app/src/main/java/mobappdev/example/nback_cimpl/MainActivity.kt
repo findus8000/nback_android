@@ -44,12 +44,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
         setContent {
             NBack_CImplTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Instantiate the viewmodel
                     val navController = rememberNavController()
                     val gameViewModel: GameVM = viewModel(
                         factory = GameVM.Factory
@@ -69,7 +67,6 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
-        // Release TTS resources
         if (::tts.isInitialized) {
             tts.stop()
             tts.shutdown()
