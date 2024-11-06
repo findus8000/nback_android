@@ -15,8 +15,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import mobappdev.example.nback_cimpl.ui.screens.HomeScreen
-import mobappdev.example.nback_cimpl.ui.screens.GameScreen
+import mobappdev.example.nback_cimpl.ui.view.HomeScreen
+import mobappdev.example.nback_cimpl.ui.view.GameScreen
 import mobappdev.example.nback_cimpl.ui.theme.NBack_CImplTheme
 import mobappdev.example.nback_cimpl.ui.viewmodels.GameVM
 import java.util.Locale

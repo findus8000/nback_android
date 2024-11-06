@@ -1,6 +1,9 @@
 package mobappdev.example.nback_cimpl.ui.viewmodels
 
+import android.speech.tts.TextToSpeech
 import android.util.Log
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -44,6 +47,7 @@ interface GameViewModel {
     fun setGameType(gameType: GameType)
     fun startGame()
     fun checkMatch() : Boolean
+    fun getLetterForEvent() : String
 }
 
 class GameVM(
@@ -75,6 +79,9 @@ class GameVM(
 
     private val _nrMatches = MutableStateFlow(0)
     override val nrMatches: StateFlow<Int> = _nrMatches.asStateFlow()
+
+    private val lettersList = listOf('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I')
+
 
 
     override fun setGameType(gameType: GameType) {
@@ -155,6 +162,10 @@ class GameVM(
         }
     }
 
+ override fun getLetterForEvent() : String{
+     return lettersList[gameState.value.eventValue - 1].toString()
+ }
+
     private fun runAudioVisualGame(){
         // Todo: Make work for Higher grade
     }
@@ -223,5 +234,9 @@ class FakeVM: GameViewModel{
 
     override fun checkMatch(): Boolean {
         return true
+    }
+
+    override fun getLetterForEvent(): String {
+        TODO("Not yet implemented")
     }
 }
